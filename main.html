@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Enhanced Bookmark Page</title>
+  <title>Enhanced Web View</title>
   <style>
     /* Import font */
     @import url('https://fonts.googleapis.com/css2?family=Varela+Round:wght@400&display=swap');
@@ -30,8 +30,6 @@
     .container {
       padding: 20px;
       text-align: center;
-      position: relative;
-      z-index: 1;
       color: #ADD8E6;
     }
 
@@ -74,9 +72,14 @@
       transition: background-color 0.3s, color 0.3s, transform 0.2s;
     }
 
-    /* Go and Add Bookmark Button Styles */
-    #goButton, #addBookmarkButton {
+    /* Button Styles */
+    .go-button {
       background-color: #007bff;
+      color: #fff;
+    }
+
+    .add-button {
+      background-color: #4caf50;
       color: #fff;
     }
 
@@ -87,8 +90,8 @@
       transform: scale(1.05);
     }
 
-    /* Bookmark Bar Styles */
-    .rectangle {
+    /* Bookmark Container */
+    .bookmark-container {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
@@ -98,7 +101,6 @@
       margin-top: 20px;
     }
 
-    /* Individual Bookmark Button Styles */
     .bookmark-button {
       background-color: #555;
       color: #eaeaea;
@@ -108,60 +110,6 @@
       font-size: 14px;
       display: flex;
       align-items: center;
-      border-radius: 5px;
-    }
-
-    /* Prompt Overlay Styles */
-    #overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 2;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .prompt-box {
-      background: #333;
-      padding: 20px;
-      border-radius: 8px;
-      text-align: center;
-      color: #eaeaea;
-    }
-
-    .prompt-box input {
-      width: 80%;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 5px;
-      background-color: #444;
-      color: #ddd;
-      border: 1px solid #555;
-      outline: none;
-    }
-
-    /* Bookmark Bar Toggle Button */
-    .toggle-bar {
-      position: fixed;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100%;
-      background-color: #333;
-      padding: 10px;
-      text-align: center;
-      cursor: pointer;
-      z-index: 1;
-    }
-
-    .toggle-button {
-      background-color: #007bff;
-      color: #fff;
-      padding: 5px 10px;
       border-radius: 5px;
     }
 
@@ -186,107 +134,64 @@
     <div class="subtitle">Organize Your Links</div>
 
     <input type="text" id="url" placeholder="Enter a URL or search term">
-    <button id="goButton" onclick="redirect()">Go</button>
-    <button id="addBookmarkButton" onclick="addBookmark()">Add Bookmark</button>
+    <button class="go-button" onclick="redirect()">Go</button>
+    <button class="add-button" onclick="addBookmark()">Add Bookmark</button>
     
     <!-- Bookmark Container -->
-    <div class="rectangle" id="bookmarkButtons"></div>
-
-    <!-- Bookmark Bar Toggle -->
-    <div class="toggle-bar">
-      <span class="toggle-button" onclick="toggleBookmarkBar()">+</span>
-    </div>
-
-    <!-- Custom Prompt Overlay -->
-    <div id="overlay">
-      <div class="prompt-box">
-        <p id="prompt-message"></p>
-        <input type="text" id="prompt-input">
-        <button onclick="submitPrompt()">OK</button>
-        <button onclick="closePrompt()">Cancel</button>
-      </div>
-    </div>
+    <div class="bookmark-container" id="bookmarkButtons"></div>
   </div>
 
-   <script>
-    var bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
-    renderBookmarkButtons();
-
-    function redirect() {
-      var input = document.getElementById('url').value;
-      var url;
-
-      if (isValidURL(input)) {
-        url = input.startsWith('http') ? input : 'https://' + input;
-      } else {
-        url = 'https://www.google.com/search?q=' + encodeURIComponent(input);
-      }
-
-      window.open(url, '_blank');
-    }
-
-    function isValidURL(str) {
-      const pattern = /^(https?:\/\/)?([\w\d-]+\.)+[\w]{2,}(\/.*)?$/;
-      return pattern.test(str);
-    }
-
-    function addBookmark() {
-      var input = document.getElementById('url').value; 
-      customPrompt("Enter bookmark name:").then(function(bookmarkName) {
-        if (!bookmarkName) return;
-
-        if (!isValidURL(input)) {
-          input = 'https://www.google.com/search?q=' + encodeURIComponent(input);
-        } else if (!input.startsWith('http')) {
-          input = 'https://' + input;
-        }
-
-        bookmarks.push({ name: bookmarkName, url: input });
-        renderBookmarkButtons();
-        saveBookmarks();
-      });
-    }
+  <script>
+    const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
 
     function renderBookmarkButtons() {
-      var container = document.getElementById('bookmarkButtons');
+      const container = document.getElementById('bookmarkButtons');
       container.innerHTML = '';
 
-      bookmarks.forEach(function(bookmark) {
-        var button = document.createElement('button');
+      bookmarks.forEach(bookmark => {
+        const button = document.createElement('button');
         button.className = 'bookmark-button';
         button.textContent = bookmark.name;
-        button.onclick = function() {
+        button.onclick = () => {
           window.open(bookmark.url, '_blank');
         };
         container.appendChild(button);
       });
     }
 
-    function customPrompt(message, defaultValue) {
-      document.getElementById("prompt-message").innerText = message;
-      document.getElementById("prompt-input").value = defaultValue || "";
-      document.getElementById("overlay").style.display = "flex";
+    function redirect() {
+      const input = document.getElementById('url').value;
+      let url = input;
 
-      return new Promise(resolve => {
-        submitPrompt = function() {
-          var userInput = document.getElementById("prompt-input").value;
-          document.getElementById("overlay").style.display = "none";
-          resolve(userInput);
-        }
-      });
+      // Validate URL format
+      if (!url.match(/^(https?:\/\/)?([\w\d-]+\.)+[\w]{2,}(\/.*)?$/)) {
+        url = 'https://www.google.com/search?q=' + encodeURIComponent(input);
+      } else if (!url.startsWith('http')) {
+        url = 'https://' + url;
+      }
+
+      window.open(url, '_blank');
     }
 
-    function closePrompt() {
-      document.getElementById("overlay").style.display = "none";
-    }
+    function addBookmark() {
+      const input = document.getElementById('url').value;
+      const name = prompt("Enter bookmark name:");
+      
+      if (!name) return;
+      
+      let url = input;
+      if (!url.match(/^(https?:\/\/)?([\w\d-]+\.)+[\w]{2,}(\/.*)?$/)) {
+        url = 'https://www.google.com/search?q=' + encodeURIComponent(input);
+      } else if (!url.startsWith('http')) {
+        url = 'https://' + url;
+      }
 
-    function toggleBookmarkBar() {
-      var bar = document.querySelector('.rectangle');
-      bar.style.display = (bar.style.display === 'none' || bar.style.display === '') ? 'flex' : 'none';
-    }
-
-    function saveBookmarks() {
+      bookmarks.push({ name: name, url: url });
       localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+      renderBookmarkButtons();
     }
+
+    renderBookmarkButtons();
   </script>
+</body>
 </html>

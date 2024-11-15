@@ -140,58 +140,212 @@
     <!-- Bookmark Container -->
     <div class="bookmark-container" id="bookmarkButtons"></div>
   </div>
+<script>
+    var bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+renderBookmarkButtons();
 
-  <script>
-    const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+function redirect(event) {
+  var input = document.getElementById('url').value;
+  var url;
 
-    function renderBookmarkButtons() {
-      const container = document.getElementById('bookmarkButtons');
-      container.innerHTML = '';
+  if (isValidURL(input)) {
+    url = input.startsWith('http') ? input : 'https://' + input;
+  } else {
+    url = 'https://www.google.com/search?q=' + encodeURIComponent(input);
+  }
 
-      bookmarks.forEach(bookmark => {
-        const button = document.createElement('button');
-        button.className = 'bookmark-button';
-        button.textContent = bookmark.name;
-        button.onclick = () => {
-          window.open(bookmark.url, '_blank');
-        };
-        container.appendChild(button);
-      });
+  var isShiftPressed = event.shiftKey;
+  if (isShiftPressed) {
+    window.location.href = url;
+    setTimeout(function() {
+      window.location.href = url + "/?";
+    }, 500);
+    return;
+  }
+
+  var iframe = document.createElement('iframe');
+  iframe.src = 'loading.html';
+  iframe.style.position = 'fixed';
+  iframe.style.top = '0';
+  iframe.style.left = '0';
+  iframe.style.width = '100%';
+  iframe.style.height = '100%';
+  iframe.style.border = 'none';
+  document.body.appendChild(iframe);
+
+  var blobbypass = window.open('loading.html');
+  setTimeout(function() {
+    var windowOpenValue = blobbypass || "Blocked";
+    if (windowOpenValue === "Blocked" || !blobbypass || blobbypass.closed || typeof blobbypass.closed === "undefined") {
+      window.location.href = url;
+    } else {
+      blobbypass.location.href = url;
+      setTimeout(function() {
+        document.body.removeChild(iframe);
+      }, 500);
     }
+  }, 1000);
+}
 
-    function redirect() {
-      const input = document.getElementById('url').value;
-      let url = input;
+function isValidURL(str) {
+  const pattern = /^(https?:\/\/)?([\w\d-]+\.)+[\w]{2,}(\/.*)?$/;
+  return pattern.test(str);
+}
 
-      // Validate URL format
-      if (!url.match(/^(https?:\/\/)?([\w\d-]+\.)+[\w]{2,}(\/.*)?$/)) {
-        url = 'https://www.google.com/search?q=' + encodeURIComponent(input);
-      } else if (!url.startsWith('http')) {
-        url = 'https://' + url;
-      }
+async function customPrompt(message, defaultValue) {
+  document.getElementById("prompt-message").innerText = message;
+  document.getElementById("prompt-input").value = defaultValue || "";
+  document.getElementById("overlay").style.display = "flex";
 
-      window.open(url, '_blank');
+  return new Promise(resolve => {
+    submitPrompt = function() {
+      var userInput = document.getElementById("prompt-input").value;
+      document.getElementById("overlay").style.display = "none";
+      resolve(userInput);
+      submitPrompt = null;
     }
+  });
+}
 
-    function addBookmark() {
-      const input = document.getElementById('url').value;
-      const name = prompt("Enter bookmark name:");
-      
-      if (!name) return;
-      
-      let url = input;
-      if (!url.match(/^(https?:\/\/)?([\w\d-]+\.)+[\w]{2,}(\/.*)?$/)) {
-        url = 'https://www.google.com/search?q=' + encodeURIComponent(input);
-      } else if (!url.startsWith('http')) {
-        url = 'https://' + url;
-      }
+function addBookmark() {
+  var input = document.getElementById('url').value; 
+  customPrompt("Enter bookmark name:").then(function(bookmarkName) {
+    if (!bookmarkName) return;
 
-      bookmarks.push({ name: name, url: url });
-      localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+    if (!isValidURL(input)) {
+      bookmarks.push({ name: bookmarkName, url: 'https://www.google.com/search?q=' + encodeURIComponent(input) });
       renderBookmarkButtons();
+      saveBookmarks();
+      return;
     }
 
+    input = input.startsWith('http') ? input : 'https://' + input;
+    bookmarks.push({ name: bookmarkName, url: input });
     renderBookmarkButtons();
-  </script>
+    saveBookmarks();
+  });
+}
+
+function renderBookmarkButtons() {
+  var container = document.getElementById('bookmarkButtons');
+  container.innerHTML = '';
+
+  bookmarks.forEach(function(bookmark) {
+    var button = document.createElement('button');
+    button.className = 'bookmark-button';
+    var faviconURL = getFaviconURL(bookmark.url);
+
+    if (faviconURL) {
+      var faviconImg = document.createElement('img');
+      faviconImg.src = faviconURL;
+      faviconImg.alt = "Favicon";
+      button.appendChild(faviconImg);
+    }
+
+    var urlSpan = document.createElement('span');
+    urlSpan.textContent = bookmark.name;
+    button.appendChild(urlSpan);
+
+    var deleteButton = document.createElement('button');
+    deleteButton.className = 'delete-button';
+    deleteButton.textContent = 'X';
+    deleteButton.onclick = function(event) {
+      event.stopPropagation();
+      deleteBookmark(bookmark);
+    };
+    button.appendChild(deleteButton);
+
+    var editButton = document.createElement('button');
+    editButton.className = 'edit-button';
+    editButton.textContent = '🖉';
+    editButton.onclick = function(event) {
+      event.stopPropagation();
+      editBookmark(bookmark);
+    };
+    button.appendChild(editButton);
+
+    button.onclick = function(event) {
+      var isShiftPressed = event.shiftKey;
+      if (isShiftPressed) {
+        window.location.href = bookmark.url;
+        setTimeout(function() {
+          window.location.href = bookmark.url + "/?";
+        }, 500);
+        return;
+      }
+
+      var iframe = document.createElement('iframe');
+      iframe.src = 'loading.html';
+      iframe.style.position = 'fixed';
+      iframe.style.top = '0';
+      iframe.style.left = '0';
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+
+      var blobbypass = window.open('loading.html');
+      setTimeout(function() {
+        var windowOpenValue = blobbypass || "Blocked";
+        if (windowOpenValue === "Blocked" || !blobbypass || blobbypass.closed || typeof blobbypass.closed === "undefined") {
+          window.location.href = bookmark.url;
+        } else {
+          blobbypass.location.href = bookmark.url;
+          setTimeout(function() {
+            document.body.removeChild(iframe);
+          }, 500);
+        }
+      }, 1000);
+    };
+
+    container.appendChild(button);
+  });
+}
+
+function deleteBookmark(bookmark) {
+  bookmarks = bookmarks.filter(function(item) {
+    return item !== bookmark;
+  });
+  renderBookmarkButtons();
+  saveBookmarks();
+}
+
+function editBookmark(bookmark) {
+  customPrompt("Enter new name for bookmark:", bookmark.name)
+    .then(newName => {
+      if (newName) {
+        bookmark.name = newName;
+        renderBookmarkButtons();
+        saveBookmarks();
+      }
+    });
+
+  customPrompt("Enter new URL for bookmark:", bookmark.url)
+    .then(newUrl => {
+      if (newUrl && isValidURL(newUrl)) {
+        bookmark.url = newUrl.startsWith('http') ? newUrl : 'https://' + newUrl;
+        renderBookmarkButtons();
+        saveBookmarks();
+      }
+    });
+}
+
+function getFaviconURL(url) {
+  return 'https://www.google.com/s2/favicons?sz=64&domain=' + encodeURIComponent(url);
+}
+
+function saveBookmarks() {
+  localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+}
+
+document.getElementById('url').addEventListener('keydown', function(event) {
+  if (event.key === 'Enter') {
+    redirect(event);
+    document.getElementById('url').blur();
+  }
+});
+
+</script>
+
 </body>
 </html>
